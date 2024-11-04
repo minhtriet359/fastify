@@ -21,7 +21,7 @@ t.test('logger instantiation', (t) => {
   let localhost
   let localhostForURL
 
-  t.plan(11)
+  t.plan(12)
   t.before(async function () {
     [localhost, localhostForURL] = await helper.getLoopbackHost()
   })
@@ -318,6 +318,42 @@ t.test('logger instantiation', (t) => {
     await request(`http://${localhostForURL}:` + fastify.server.address().port + '/custom')
 
     for await (const [line] of on(stream, 'data')) {
+      t.match(line, lines.shift())
+      if (lines.length === 0) break
+    }
+  })
+
+  t.test('The logger should accept custom attribute keys', async (t) => {
+    const lines = [
+      { msg: /^Server listening at / },
+      { customReq: { url: '/custom' }, msg: 'incoming request' }
+    ]
+    t.plan(lines.length + 1)
+
+    const stream = split(JSON.parse)
+    const fastify = Fastify({
+      logger: {
+        stream,
+        level: 'info',
+        customAttributeKeys: {
+          req: 'customReq'
+        }
+      }
+    })
+    t.teardown(fastify.close.bind(fastify))
+
+    fastify.get('/custom', function (req, reply) {
+      t.ok(req.log)
+      reply.send(new Error('kaboom'))
+    })
+
+    await fastify.ready()
+    await fastify.listen({ port: 0, host: localhost })
+
+    await request(`http://${localhostForURL}:` + fastify.server.address().port + '/custom')
+
+    for await (const [line] of on(stream, 'data')) {
+      console.log('Log output:', line)
       t.match(line, lines.shift())
       if (lines.length === 0) break
     }

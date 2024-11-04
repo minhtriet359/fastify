@@ -3,7 +3,7 @@
 const { test } = require('node:test')
 const Fastify = require('../..')
 const loggerUtils = require('../../lib/logger-factory')
-const { serializers } = require('../../lib/logger-pino')
+const { createSerializers } = require('../../lib/logger-pino')
 
 test('time resolution', t => {
   t.plan(2)
@@ -145,7 +145,7 @@ test('The logger should error if both stream and file destination are given', t 
 test('The serializer prevent fails if the request socket is undefined', t => {
   t.plan(1)
 
-  const serialized = serializers.req({
+  const serialized = createSerializers({}).req({
     method: 'GET',
     url: '/',
     socket: undefined,
